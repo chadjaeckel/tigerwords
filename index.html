@@ -55,16 +55,38 @@
         </div>
       </div>
 
-      <div id="right-panel">
-        <div id="shortcuts" aria-label="Keyboard shortcuts">
-          <h2>Keyboard Shortcuts</h2>
-          <ul>
-            <li><strong>1</strong> = Start Game</li>
-            <li><strong>2</strong> = Read Letters</li>
-            <li><strong>Space</strong> = Hold to Talk</li>
-            <li><strong>Enter</strong> = Submit Typed Word</li>
-          </ul>
-        </div>
+<div id="right-panel">
+  <div id="shortcuts" aria-label="Keyboard shortcuts">
+    <h2>Keyboard Shortcuts</h2>
+    <ul>
+      <li><strong>1</strong> = Start Game</li>
+      <li><strong>2</strong> = Read Letters</li>
+      <li><strong>Space</strong> = Hold to Talk</li>
+      <li><strong>Enter</strong> = Submit Typed Word</li>
+    </ul>
+  </div>
+
+  <div id="voice-commands" aria-label="Voice commands">
+    <h2>Voice Commands</h2>
+    <ul>
+      <li><strong>Guess [word]</strong> = Submit a word</li>
+      <li><strong>Hint</strong> = Get a hint</li>
+      <li><strong>Read grid</strong> = Hear the grid letters</li>
+      <li><strong>Repeat</strong> = Repeat the last status message</li>
+      <li><strong>Read found words</strong> = Hear found words</li>
+      <li><strong>Read remaining words</strong> = Hear remaining words</li>
+    </ul>
+  </div>
+
+  <div id="stats"></div>
+
+  <div id="found-words">
+    <h2>Found Words</h2>
+    <ul id="found-list"></ul>
+  </div>
+
+  <div id="end-summary" hidden aria-live="polite"></div>
+</div>
 <div id="end-summary" hidden aria-live="polite"></div>
         
 <div id="end-summary" hidden aria-live="polite"></div>
