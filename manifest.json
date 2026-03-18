@@ -1,5 +1,5 @@
 {
-  "name": "Accessible Word Grid",
+  "name": "Tiger Words",
   "short_name": "Word Grid",
   "description": "An accessible word game with keyboard and voice controls.",
   "start_url": "./index.html",
