@@ -39,6 +39,86 @@ function loadStats() {
   updateStatsUI();
 }
 
+function getLongestFoundWord() {
+  if (!gameState || !gameState.foundWords || gameState.foundWords.size === 0) {
+    return null;
+  }
+
+  let longest = "";
+
+  for (const word of gameState.foundWords) {
+    if (word.length > longest.length) {
+      longest = word;
+    }
+  }
+
+  return longest;
+}
+
+function buildEndGameSummary() {
+  if (!gameState || !gameState.puzzle) return null;
+
+  const totalValidWords = gameState.puzzle.validWords.length;
+  const foundCount = gameState.foundWords.size;
+  const missedCount = totalValidWords - foundCount;
+  const longestWord = getLongestFoundWord() || "None";
+
+  const totalScore = gameState.players.reduce((sum, player) => sum + player.score, 0);
+
+  return {
+    totalScore,
+    totalWordsFound: foundCount,
+    totalValidWords,
+    missedWords: missedCount,
+    longestWord
+  };
+}
+
+function showEndGameSummary() {
+  const container = document.getElementById("end-summary");
+  if (!container) return;
+
+  const summary = buildEndGameSummary();
+  if (!summary) return;
+
+  container.hidden = false;
+  container.innerHTML = `
+    <h2>Game Summary</h2>
+    <ul>
+      <li><strong>Total Score:</strong> ${summary.totalScore}</li>
+      <li><strong>Words Found:</strong> ${summary.totalWordsFound} of ${summary.totalValidWords}</li>
+      <li><strong>Longest Word Found:</strong> ${summary.longestWord}</li>
+      <li><strong>Words Missed:</strong> ${summary.missedWords}</li>
+    </ul>
+  `;
+
+  setStatus(
+    `Game over. You found ${summary.totalWordsFound} words. Longest word: ${summary.longestWord}.`,
+    true
+  );
+}
+
+function hideEndGameSummary() {
+  const container = document.getElementById("end-summary");
+  if (!container) return;
+
+  container.hidden = true;
+  container.innerHTML = "";
+}
+
+function checkForGameEnd() {
+  if (!gameState || !gameState.puzzle) return false;
+
+  const totalValidWords = gameState.puzzle.validWords.length;
+  const foundCount = gameState.foundWords.size;
+
+  if (foundCount >= totalValidWords) {
+    showEndGameSummary();
+    return true;
+  }
+
+  return false;
+}
 function saveStats() {
   try {
     localStorage.setItem(statsKey, JSON.stringify(stats));
