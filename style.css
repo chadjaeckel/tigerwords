@@ -55,7 +55,22 @@ header {
   gap: 8px;
   margin-bottom: 1rem;
 }
+#end-summary {
+  margin-top: 10px;
+  padding: 10px;
+  background: #1a1a1a;
+  border: 1px solid #555;
+  border-radius: 8px;
+}
 
+#end-summary h2 {
+  margin-top: 0;
+}
+
+#end-summary ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
 
 #shortcuts,
 #voice-commands {
