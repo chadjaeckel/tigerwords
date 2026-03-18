@@ -4,28 +4,18 @@
 // Provides WORD_LIST and WORDS_READY
 // ===============================
 
-// Global list used by puzzle.js and game.js
 const WORD_LIST = [];
 
-// Promise that resolves when the word list is fully loaded
-const WORDS_READY = fetch("words.txt")
-  .then(response => response.text())
-  .then(text => {
-    const lines = text.split(/\r?\n/);
-
-    for (let word of lines) {
-      word = word.trim().toLowerCase();
-
-      const WORD_LIST = [];
-
-const WORDS_READY = fetch("words.txt")
+const WORDS_READY = fetch("./words.txt", { cache: "no-store" })
   .then(response => {
     if (!response.ok) {
-      throw new Error(`Failed to load words.txt: ${response.status}`);
+      throw new Error(`Failed to load words.txt: ${response.status} ${response.statusText}`);
     }
     return response.text();
   })
   .then(text => {
+    console.log("words.txt raw length:", text.length);
+
     const lines = text.split(/\r?\n/);
 
     for (let word of lines) {
@@ -36,20 +26,11 @@ const WORDS_READY = fetch("words.txt")
       }
     }
 
-    console.log("Loaded words:", WORD_LIST.length);
-  })
-  .catch(err => {
-    console.error("Error loading words.txt:", err);
-  });
-  
+    console.log("Loaded words into WORD_LIST:", WORD_LIST.length);
 
-      // Basic filtering — adjust as needed
-      if (word.length >= 4 && /^[a-z]+$/.test(word)) {
-        WORD_LIST.push(word);
-      }
+    if (WORD_LIST.length === 0) {
+      throw new Error("words.txt loaded, but no valid words passed filtering.");
     }
-
-    console.log("Loaded words:", WORD_LIST.length);
   })
   .catch(err => {
     console.error("Error loading words.txt:", err);
