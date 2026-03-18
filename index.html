@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accessible Word Grid</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#111111" />
+</head>
+<body>
+  <main>
+    <h1>Accessible Word Grid</h1>
+
+    <div id="setup-panel">
+      <label>
+        <input type="radio" name="mode" value="single" checked />
+        Single Player
+      </label>
+
+      <label>
+        <input type="radio" name="mode" value="two" />
+        Two Player
+      </label>
+
+      <input id="player1-name" type="text" placeholder="Player 1 name" />
+      <input id="player2-name" type="text" placeholder="Player 2 name" />
+
+      <button id="start-btn">Start Game</button>
+    </div>
+
+    <div id="game" hidden>
+      <div id="left-panel">
+        <div id="grid" aria-label="Letter grid"></div>
+
+        <div id="p1-score"></div>
+        <div id="p2-score" hidden></div>
+        <div id="status" role="status" aria-live="polite"></div>
+
+        <div class="controls">
+          <button id="listen-btn">Start Listening</button>
+          <button id="stop-btn">Stop Listening</button>
+          <button id="hint-btn">Hint</button>
+          <button id="read-btn">Read Letters</button>
+        </div>
+
+        <div id="type-entry">
+          <input
+            id="typed-word"
+            type="text"
+            placeholder="Type a word and press Enter"
+            autocomplete="off"
+          />
+        </div>
+      </div>
+
+      <div id="right-panel">
+        <div id="shortcuts" aria-label="Keyboard shortcuts">
+          <h2>Keyboard Shortcuts</h2>
+          <ul>
+            <li><strong>1</strong> = Start Game</li>
+            <li><strong>2</strong> = Read Letters</li>
+            <li><strong>Space</strong> = Hold to Talk</li>
+            <li><strong>Enter</strong> = Submit Typed Word</li>
+          </ul>
+        </div>
+
+        <div id="voice-commands" aria-label="Voice commands">
+          <h2>Voice Commands</h2>
+          <ul>
+            <li><strong>Guess [word]</strong> = Submit a word</li>
+            <li><strong>Hint</strong> = Get a hint</li>
+            <li><strong>Read grid</strong> = Hear the grid letters</li>
+            <li><strong>Repeat</strong> = Repeat the last status message</li>
+            <li><strong>Read found words</strong> = Hear found words</li>
+            <li><strong>Read remaining words</strong> = Hear remaining words</li>
+          </ul>
+        </div>
+
+        <div id="stats"></div>
+
+        <div id="found-words">
+          <h2>Found Words</h2>
+          <ul id="found-list"></ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="dictionary.js"></script>
+  <script src="words.js"></script>
+  <script src="puzzle.js"></script>
+  <script src="speech.js"></script>
+  <script src="commands.js"></script>
+  <script src="game.js"></script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try {
+          await navigator.serviceWorker.register("./service-worker.js");
+          console.log("Service worker registered.");
+        } catch (error) {
+          console.error("Service worker registration failed:", error);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
