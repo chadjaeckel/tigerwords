@@ -1,4 +1,4 @@
-const CACHE_NAME = "accessible-word-grid-v1";
+const CACHE_NAME = "accessible-word-grid-v2";
 
 const APP_ASSETS = [
   "./",
