@@ -75,15 +75,6 @@ function setStatus(message, speak = false) {
   }
 }
 
-function isTypingTarget(target) {
-  return (
-    target &&
-    (target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.isContentEditable)
-  );
-}
-
 function startListening() {
   if (!gameState || !gameState.puzzle) {
     setStatus("Start a game before using voice commands.", true);
@@ -301,39 +292,52 @@ function handleGuess(word) {
 // ===============================
 // START GAME
 // ===============================
-document.getElementById("start-btn").addEventListener("click", () => {
-  stats.gamesPlayed += 1;
-  saveStats();
-  updateStatsUI();
+document.getElementById("start-btn").addEventListener("click", async () => {
+  try {
+    setStatus("Loading words...");
+    await WORDS_READY;
 
-  const mode = document.querySelector("input[name='mode']:checked").value;
-  const p1Name = document.getElementById("player1-name").value.trim() || "Player 1";
-  const p2Name = document.getElementById("player2-name").value.trim() || "Player 2";
+    if (!Array.isArray(WORD_LIST) || WORD_LIST.length === 0) {
+      setStatus("Word list failed to load.", true);
+      return;
+    }
 
-  const puzzle = Puzzle.generatePuzzle();
-  puzzle.validWords = Puzzle.findValidWords(puzzle);
+    stats.gamesPlayed += 1;
+    saveStats();
+    updateStatsUI();
 
-  gameState = {
-    puzzle,
-    players: [
-      { name: p1Name, score: 0 },
-      { name: p2Name, score: 0 }
-    ],
-    mode,
-    currentPlayerIndex: 0,
-    foundWords: new Set()
-  };
+    const mode = document.querySelector("input[name='mode']:checked").value;
+    const p1Name = document.getElementById("player1-name").value.trim() || "Player 1";
+    const p2Name = document.getElementById("player2-name").value.trim() || "Player 2";
 
-  document.getElementById("game").hidden = false;
+    const puzzle = Puzzle.generatePuzzle();
+    puzzle.validWords = Puzzle.findValidWords(puzzle);
 
-  updateUI();
-  updateFoundWords();
-  setStatus("Game started.", true);
+    gameState = {
+      puzzle,
+      players: [
+        { name: p1Name, score: 0 },
+        { name: p2Name, score: 0 }
+      ],
+      mode,
+      currentPlayerIndex: 0,
+      foundWords: new Set()
+    };
 
-  const typedInput = document.getElementById("typed-word");
-  if (typedInput) {
-    typedInput.focus();
-    typedInput.select();
+    document.getElementById("game").hidden = false;
+
+    updateUI();
+    updateFoundWords();
+    setStatus("Game started.", true);
+
+    const typedInput = document.getElementById("typed-word");
+    if (typedInput) {
+      typedInput.focus();
+      typedInput.select();
+    }
+  } catch (error) {
+    console.error("Failed to start game:", error);
+    setStatus("Could not start the game.", true);
   }
 });
 
@@ -387,10 +391,6 @@ document.addEventListener("keyup", e => {
 // GLOBAL SHORTCUTS
 // ===============================
 document.addEventListener("keydown", e => {
-  if (isTypingTarget(e.target) && e.key !== "2") {
-    return;
-  }
-
   if (e.key === "1") {
     e.preventDefault();
     document.getElementById("start-btn").click();
