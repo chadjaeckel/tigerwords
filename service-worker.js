@@ -1,65 +1,36 @@
-const CACHE_NAME = "accessible-word-grid-v2";
-
-const APP_ASSETS = [
-  "./",
-  "./index.html",
-  "./style.css",
-  "./game.js",
-  "./dictionary.js",
-  "./commands.js",
-  "./puzzle.js",
-  "./speech.js",
-  "./words.js",
-  "./words.txt",
-  "./manifest.json"
+const CACHE_NAME = "awg-cache-v1";
+const FILES_TO_CACHE = [
+  "/",
+  "/index.html",
+  "/style.css",
+  "/game.js",
+  "/speech.js",
+  "/commands.js",
+  "/dictionary.js",
+  "/puzzle.js",
+  "/storage.js",
+  "/manifest.json"
 ];
 
-self.addEventListener("install", event => {
+// Install
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(APP_ASSETS);
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(FILES_TO_CACHE);
     })
   );
-  self.skipWaiting();
 });
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
-  );
-  self.clients.claim();
+// Activate
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
-
+// Fetch
+self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request)
-        .then(networkResponse => {
-          const responseClone = networkResponse.clone();
-
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseClone);
-          });
-
-          return networkResponse;
-        })
-        .catch(() => {
-          return caches.match("./index.html");
-        });
+    caches.match(event.request).then((resp) => {
+      return resp || fetch(event.request);
     })
   );
 });
