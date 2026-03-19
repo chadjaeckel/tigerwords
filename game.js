@@ -2,246 +2,99 @@
 // Accessible Word Grid - game.js
 // ===============================
 
+// Global game state
 let gameState = null;
 
 // ===============================
-// STATUS
+// Persistent Game Statistics
+// ===============================
+const statsKey = "wordGridStats";
+
+let stats = {
+  gamesPlayed: 0,
+  totalWordsFound: 0,
+  totalPoints: 0
+};
+
+function loadStats() {
+  try {
+    const saved = localStorage.getItem(statsKey);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      stats = {
+        gamesPlayed: Number(parsed.gamesPlayed) || 0,
+        totalWordsFound: Number(parsed.totalWordsFound) || 0,
+        totalPoints: Number(parsed.totalPoints) || 0
+      };
+    }
+  } catch (error) {
+    console.warn("Could not load stats from localStorage:", error);
+    stats = {
+      gamesPlayed: 0,
+      totalWordsFound: 0,
+      totalPoints: 0
+    };
+  }
+
+  updateStatsUI();
+}
+
+function saveStats() {
+  try {
+    localStorage.setItem(statsKey, JSON.stringify(stats));
+  } catch (error) {
+    console.warn("Could not save stats to localStorage:", error);
+  }
+}
+
+function updateStatsUI() {
+  const container = document.getElementById("stats");
+  if (!container) return;
+
+  container.innerHTML = `
+    <h3>Statistics</h3>
+    <p>Games Played: ${stats.gamesPlayed}</p>
+    <p>Total Words Found: ${stats.totalWordsFound}</p>
+    <p>Total Points: ${stats.totalPoints}</p>
+  `;
+}
+
+document.addEventListener("DOMContentLoaded", loadStats);
+
+// ===============================
+// Helpers
 // ===============================
 function setStatus(message, speak = false) {
   const status = document.getElementById("status");
-  if (status) status.textContent = message;
+  if (status) {
+    status.textContent = message;
+  }
 
-  if (speak && Speech?.speak) {
+  if (speak && typeof Speech !== "undefined" && Speech.speak) {
     Speech.speak(message);
   }
 }
 
-// ===============================
-// RESET / CLEAR
-// ===============================
-function resetGameUI() {
-  document.getElementById("typed-word").value = "";
-  document.getElementById("found-list").innerHTML = "";
-  document.getElementById("status").textContent = "";
-}
-
-function clearEndGameUI() {
-  const missed = document.getElementById("missed-words");
-  if (missed) missed.remove();
-}
-
-// ===============================
-// UPDATE FOUND WORDS
-// ===============================
-function updateFoundWords() {
-  const list = document.getElementById("found-list");
-  list.innerHTML = "";
-
-  Array.from(gameState.foundWords)
-    .sort()
-    .forEach(word => {
-      const li = document.createElement("li");
-      li.textContent = word;
-      list.appendChild(li);
-    });
-}
-
-// ===============================
-// UPDATE MISSED WORDS
-// ===============================
-function updateMissedWordsUI(missedWords) {
-  let section = document.getElementById("missed-words");
-
-  if (!section) {
-    section = document.createElement("div");
-    section.id = "missed-words";
-    document.getElementById("game").appendChild(section);
-  }
-
-  const items = missedWords.map(w => `<li>${w}</li>`).join("");
-
-  section.innerHTML = `
-    <h3>Missed Words</h3>
-    <p>You missed ${missedWords.length} words.</p>
-    <ul>${items}</ul>
-  `;
-}
-
-// ===============================
-// READ MISSED WORDS
-// ===============================
-function readMissedWordsAloud() {
-  const missedWords = gameState.puzzle.validWords
-    .filter(w => !gameState.foundWords.has(w))
-    .sort();
-
-  if (missedWords.length === 0) {
-    Speech.speak("You found all words.");
-    return;
-  }
-
-  const chunkSize = 5;
-  let index = 0;
-
-  function speakNext() {
-    if (index >= missedWords.length) return;
-
-    const chunk = missedWords.slice(index, index + chunkSize);
-    index += chunkSize;
-
-    Speech.speak(chunk.join(", "), speakNext);
-  }
-
-  Speech.speak(`You missed ${missedWords.length} words.`, speakNext);
-}
-
-// ===============================
-// READ REMAINING SUMMARY (NEW)
-// ===============================
-function readRemainingSummary() {
-  const remaining = gameState.puzzle.validWords.filter(
-    w => !gameState.foundWords.has(w)
+function isTypingTarget(target) {
+  return (
+    target &&
+    (target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.isContentEditable)
   );
-
-  if (remaining.length === 0) {
-    Speech.speak("There are no words left.");
-    return;
-  }
-
-  const counts = {};
-
-  remaining.forEach(word => {
-    const len = word.length;
-    counts[len] = (counts[len] || 0) + 1;
-  });
-
-  const parts = Object.keys(counts)
-    .sort((a, b) => Number(a) - Number(b))
-    .map(len => {
-      const count = counts[len];
-      return `There are ${count} ${len} letter ${count === 1 ? "word" : "words"} left`;
-    });
-
-  Speech.speak(parts.join(", ") + ".");
 }
 
-// ===============================
-// UPDATE UI
-// ===============================
-function updateUI() {
-  const grid = document.getElementById("grid");
-  grid.innerHTML = "";
-
-  gameState.puzzle.letters.forEach((ch, i) => {
-    const cell = document.createElement("div");
-    cell.className = "cell";
-
-    if (i === gameState.puzzle.centerIndex) {
-      cell.classList.add("center");
-    }
-
-    cell.textContent = ch.toUpperCase();
-    grid.appendChild(cell);
-  });
-
-  document.getElementById("p1-score").textContent =
-    `${gameState.players[0].name}: ${gameState.players[0].score}`;
-}
-
-// ===============================
-// HANDLE GUESS
-// ===============================
-function handleGuess(word) {
-  if (!gameState || gameState.isGameOver) {
-    setStatus("Game not active.", true);
-    return;
-  }
-
-  word = word.trim().toLowerCase();
-
-  if (!gameState.puzzle.validWords.includes(word)) {
-    setStatus(`${word} is not valid.`, true);
-    return;
-  }
-
-  if (gameState.foundWords.has(word)) {
-    setStatus("Already found.", true);
-    return;
-  }
-
-  const player = gameState.players[0];
-  player.score += word.length;
-
-  gameState.foundWords.add(word);
-
-  setStatus(`${word} accepted.`, true);
-
-  updateUI();
-  updateFoundWords();
-
-  const remaining = gameState.puzzle.validWords.filter(
-    w => !gameState.foundWords.has(w)
-  );
-
-  if (remaining.length === 0) {
-    endGame();
-  }
-}
-
-// ===============================
-// END GAME
-// ===============================
-function endGame() {
-  if (!gameState || gameState.isGameOver) return;
-
-  gameState.isGameOver = true;
-
-  const missed = gameState.puzzle.validWords.filter(
-    w => !gameState.foundWords.has(w)
-  );
-
-  const summary =
-    `Game ended. You found ${gameState.foundWords.size} words. ` +
-    `You missed ${missed.length}.`;
-
-  updateMissedWordsUI(missed);
-
-  Speech.speak(summary, () => {
-    readMissedWordsAloud();
-  });
-}
-
-// ===============================
-// VOICE CONTROL
-// ===============================
 function startListening() {
-  if (!gameState || gameState.isGameOver) {
-    setStatus("Start a game first.", true);
+  if (!gameState || !gameState.puzzle) {
+    setStatus("Start a game before using voice commands.", true);
     return;
   }
 
   setStatus("Listening...");
 
-  Speech.startListening(text => {
-    text = text.toLowerCase();
-
-    // COMMANDS
-    if (
-      text.includes("what words are left") ||
-      text.includes("words left") ||
-      text.includes("remaining words")
-    ) {
-      readRemainingSummary();
-      return;
-    }
-
-    if (text.includes("end game")) {
-      endGame();
-      return;
-    }
-
-    // Otherwise treat as guess
-    handleGuess(text);
+  Speech.pushToTalk(text => {
+    const result = Commands.parse(text);
+    handleCommandResult(result, text);
   });
 }
 
@@ -251,81 +104,407 @@ function stopListening() {
 }
 
 // ===============================
+// FUZZY MATCHING (LEVENSHTEIN)
+// ===============================
+function levenshtein(a, b) {
+  const dp = Array(a.length + 1)
+    .fill(null)
+    .map(() => Array(b.length + 1).fill(null));
+
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return dp[a.length][b.length];
+}
+
+// ===============================
+// PHONETIC MATCHING (METAPHONE)
+// ===============================
+function metaphone(word) {
+  word = word.toLowerCase().replace(/[^a-z]/g, "");
+  if (!word) return "";
+
+  const vowels = "aeiou";
+  let result = "";
+
+  for (let i = 0; i < word.length; i++) {
+    const c = word[i];
+
+    if (vowels.includes(c)) {
+      if (i === 0) result += c;
+      continue;
+    }
+
+    if ("bcdgptvqxz".includes(c)) {
+      result += c;
+    }
+  }
+
+  return result;
+}
+
+// ===============================
+// SMART GUESS
+// ===============================
+function smartGuess(word, validWords) {
+  if (validWords.includes(word)) return word;
+
+  const targetMeta = metaphone(word);
+  const phoneticMatches = validWords.filter(w => metaphone(w) === targetMeta);
+  if (phoneticMatches.length > 0) return phoneticMatches[0];
+
+  let best = null;
+  let bestDist = Infinity;
+
+  validWords.forEach(w => {
+    const d = levenshtein(word, w);
+    if (d < bestDist) {
+      bestDist = d;
+      best = w;
+    }
+  });
+
+  return bestDist <= 2 ? best : null;
+}
+
+// ===============================
+// UPDATE FOUND WORDS
+// ===============================
+function updateFoundWords() {
+  if (!gameState) return;
+
+  const container = document.getElementById("found-words");
+  if (!container) return;
+
+  container.innerHTML = "<h2>Found Words</h2>";
+
+  const ul = document.createElement("ul");
+
+  Array.from(gameState.foundWords)
+    .sort()
+    .forEach(word => {
+      const li = document.createElement("li");
+      li.textContent = word;
+      ul.appendChild(li);
+    });
+
+  container.appendChild(ul);
+}
+
+// ===============================
+// UI UPDATE
+// ===============================
+function updateUI() {
+  if (!gameState || !gameState.puzzle) return;
+
+  const grid = document.getElementById("grid");
+  if (grid) {
+    grid.innerHTML = "";
+
+    gameState.puzzle.letters.forEach((ch, i) => {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+
+      if (i === gameState.puzzle.centerIndex) {
+        cell.classList.add("center");
+      }
+
+      cell.textContent = ch.toUpperCase();
+      grid.appendChild(cell);
+    });
+  }
+
+  const p1 = gameState.players[0];
+  const p1Score = document.getElementById("p1-score");
+  if (p1Score) {
+    p1Score.textContent = `${p1.name}: ${p1.score} points`;
+  }
+
+  const p2Score = document.getElementById("p2-score");
+  if (p2Score) {
+    if (gameState.mode === "two") {
+      const p2 = gameState.players[1];
+      p2Score.hidden = false;
+      p2Score.textContent = `${p2.name}: ${p2.score} points`;
+    } else {
+      p2Score.hidden = true;
+      p2Score.textContent = "";
+    }
+  }
+}
+
+// ===============================
+// HANDLE GUESS
+// ===============================
+function handleGuess(word) {
+  if (!gameState || !gameState.puzzle) {
+    setStatus("No game started yet.", true);
+    return;
+  }
+
+  if (!word) return;
+
+  word = word.trim().toLowerCase();
+
+  if (!word) return;
+
+  if (!gameState.puzzle.validWords.includes(word)) {
+    const suggestion = smartGuess(word, gameState.puzzle.validWords);
+
+    if (suggestion) {
+      setStatus(`Did you mean ${suggestion}?`, true);
+      return;
+    }
+
+    setStatus(`${word} is not valid.`, true);
+    return;
+  }
+
+  if (gameState.foundWords.has(word)) {
+    setStatus(`${word} was already found.`, true);
+    return;
+  }
+
+  const points = word.length;
+  const player = gameState.players[gameState.currentPlayerIndex];
+
+  player.score += points;
+  gameState.foundWords.add(word);
+
+  stats.totalWordsFound += 1;
+  stats.totalPoints += points;
+  saveStats();
+  updateStatsUI();
+
+  setStatus(`${word} is valid for ${points} points.`, true);
+
+  if (gameState.mode === "two") {
+    gameState.currentPlayerIndex =
+      gameState.currentPlayerIndex === 0 ? 1 : 0;
+  }
+
+  updateUI();
+  updateFoundWords();
+}
+
+// ===============================
 // START GAME
 // ===============================
-document.getElementById("start-btn").addEventListener("click", async () => {
-  await WORDS_READY;
+document.getElementById("start-btn").addEventListener("click", () => {
+  stats.gamesPlayed += 1;
+  saveStats();
+  updateStatsUI();
+
+  const mode = document.querySelector("input[name='mode']:checked").value;
+  const p1Name = document.getElementById("player1-name").value.trim() || "Player 1";
+  const p2Name = document.getElementById("player2-name").value.trim() || "Player 2";
 
   const puzzle = Puzzle.generatePuzzle();
   puzzle.validWords = Puzzle.findValidWords(puzzle);
 
   gameState = {
     puzzle,
-    players: [{ name: "Player", score: 0 }],
-    foundWords: new Set(),
-    isGameOver: false
+    players: [
+      { name: p1Name, score: 0 },
+      { name: p2Name, score: 0 }
+    ],
+    mode,
+    currentPlayerIndex: 0,
+    foundWords: new Set()
   };
 
   document.getElementById("game").hidden = false;
 
-  clearEndGameUI();
-  resetGameUI();
   updateUI();
-
+  updateFoundWords();
   setStatus("Game started.", true);
+
+  const typedInput = document.getElementById("typed-word");
+  if (typedInput) {
+    typedInput.focus();
+    typedInput.select();
+  }
 });
 
 // ===============================
-// INPUT
+// TYPED INPUT
 // ===============================
 document.getElementById("typed-word").addEventListener("keydown", e => {
   if (e.key === "Enter") {
-    const word = e.target.value;
+    e.preventDefault();
+
+    const word = e.target.value.trim().toLowerCase();
     e.target.value = "";
+
+    if (!word) return;
+
     handleGuess(word);
   }
 });
 
 // ===============================
-// BUTTONS
+// BUTTON HANDLERS
 // ===============================
-document.getElementById("end-btn").addEventListener("click", endGame);
+document.getElementById("hint-btn").addEventListener("click", giveHint);
+document.getElementById("read-btn").addEventListener("click", readGridAloud);
+document.getElementById("listen-btn").addEventListener("click", startListening);
+document.getElementById("stop-btn").addEventListener("click", stopListening);
 
 // ===============================
-// KEYBOARD SHORTCUTS
+// PUSH-TO-TALK (SPACEBAR)
+// Press and hold to listen, release to stop
 // ===============================
-document.addEventListener("keydown", e => {
-  if (e.key === "1") {
-    e.preventDefault();
-    document.getElementById("start-btn")?.click();
-  }
-
-  if (e.key === "2") {
-    e.preventDefault();
-    endGame();
-  }
-});
-
-// ===============================
-// PUSH-TO-TALK (SPACE BAR)
-// ===============================
-let spaceHeld = false;
+let spaceDown = false;
 
 document.addEventListener("keydown", e => {
-  if (e.code === "Space" && e.target.id !== "typed-word") {
+  if (e.code === "Space" && !spaceDown) {
     e.preventDefault();
-
-    if (spaceHeld) return;
-    spaceHeld = true;
-
+    spaceDown = true;
     startListening();
   }
 });
 
 document.addEventListener("keyup", e => {
-  if (e.code === "Space" && e.target.id !== "typed-word") {
+  if (e.code === "Space" && spaceDown) {
     e.preventDefault();
-    spaceHeld = false;
+    spaceDown = false;
     stopListening();
   }
 });
+
+// ===============================
+// GLOBAL SHORTCUTS
+// ===============================
+document.addEventListener("keydown", e => {
+  if (isTypingTarget(e.target) && e.key !== "2") {
+    return;
+  }
+
+  if (e.key === "1") {
+    e.preventDefault();
+    document.getElementById("start-btn").click();
+  }
+
+  if (e.key === "2") {
+    e.preventDefault();
+    readGridAloud();
+  }
+});
+
+// ===============================
+// GAME HELPERS
+// ===============================
+function readGridAloud() {
+  if (!gameState || !gameState.puzzle) {
+    setStatus("No game started yet.", true);
+    return;
+  }
+
+  const letters = gameState.puzzle.letters.join(", ");
+  setStatus(`The letters are: ${letters}.`, true);
+}
+
+function giveHint() {
+  if (!gameState || !gameState.puzzle) {
+    setStatus("No game started yet.", true);
+    return;
+  }
+
+  const remaining = gameState.puzzle.validWords.filter(
+    w => !gameState.foundWords.has(w)
+  );
+
+  if (remaining.length === 0) {
+    setStatus("No words left.", true);
+    return;
+  }
+
+  setStatus(`A word starts with ${remaining[0][0]}.`, true);
+}
+
+function handleCommandResult(result, rawText) {
+  switch (result.type) {
+    case "guess":
+      handleGuess(result.payload);
+      break;
+
+    case "read_grid":
+      readGridAloud();
+      break;
+
+    case "hint":
+      giveHint();
+      break;
+
+    case "repeat":
+      setStatus(document.getElementById("status").textContent || "No status yet.", true);
+      break;
+
+    case "read_found_words":
+      readFoundWordsAloud();
+      break;
+
+    case "read_remaining_words":
+      readRemainingWords();
+      break;
+
+    default:
+      setStatus(`I heard ${rawText}, but didn't understand.`, true);
+  }
+}
+
+function readFoundWordsAloud() {
+  if (!gameState || !gameState.puzzle) {
+    setStatus("No game started yet.", true);
+    return;
+  }
+
+  const words = Array.from(gameState.foundWords).sort();
+
+  if (words.length === 0) {
+    setStatus("You have not found any words yet.", true);
+    return;
+  }
+
+  setStatus(`You have found the following words: ${words.join(", ")}.`, true);
+}
+
+function readRemainingWords() {
+  if (!gameState || !gameState.puzzle) {
+    setStatus("No game started yet.", true);
+    return;
+  }
+
+  const remaining = gameState.puzzle.validWords.filter(
+    w => !gameState.foundWords.has(w)
+  );
+
+  if (remaining.length === 0) {
+    setStatus("You have found all words.", true);
+    return;
+  }
+
+  const counts = {};
+  remaining.forEach(word => {
+    const len = word.length;
+    counts[len] = (counts[len] || 0) + 1;
+  });
+
+  const summary = Object.keys(counts)
+    .sort((a, b) => Number(a) - Number(b))
+    .map(len => `${counts[len]} ${len}-letter ${counts[len] === 1 ? "word" : "words"}`)
+    .join(", ");
+
+  setStatus(`You have ${remaining.length} words remaining: ${summary}.`, true);
+}
