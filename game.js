@@ -19,6 +19,7 @@ let stats = {
 function loadStats() {
   try {
     const saved = localStorage.getItem(statsKey);
+
     if (saved) {
       const parsed = JSON.parse(saved);
       stats = {
@@ -75,6 +76,24 @@ function setStatus(message, speak = false) {
   }
 }
 
+function resetGameUI() {
+  const typedInput = document.getElementById("typed-word");
+  const foundList = document.getElementById("found-list");
+  const status = document.getElementById("status");
+
+  if (typedInput) {
+    typedInput.value = "";
+  }
+
+  if (foundList) {
+    foundList.innerHTML = "";
+  }
+
+  if (status) {
+    status.textContent = "";
+  }
+}
+
 function startListening() {
   if (!gameState || !gameState.puzzle) {
     setStatus("Start a game before using voice commands.", true);
@@ -83,7 +102,7 @@ function startListening() {
 
   setStatus("Listening...");
 
-  Speech.pushToTalk(text => {
+  Speech.startListening(text => {
     const result = Commands.parse(text);
     handleCommandResult(result, text);
   });
@@ -92,98 +111,6 @@ function startListening() {
 function stopListening() {
   Speech.stopListening();
   setStatus("Stopped listening.");
-}
-
-// ===============================
-// End-of-Game Summary
-// ===============================
-function getLongestFoundWord() {
-  if (!gameState || !gameState.foundWords || gameState.foundWords.size === 0) {
-    return null;
-  }
-
-  let longest = "";
-
-  for (const word of gameState.foundWords) {
-    if (word.length > longest.length) {
-      longest = word;
-    }
-  }
-
-  return longest;
-}
-
-function buildEndGameSummary() {
-  if (!gameState || !gameState.puzzle) return null;
-
-  const totalValidWords = gameState.puzzle.validWords.length;
-  const foundCount = gameState.foundWords.size;
-  const missedCount = totalValidWords - foundCount;
-  const longestWord = getLongestFoundWord() || "None";
-  const totalScore = gameState.players.reduce((sum, player) => sum + player.score, 0);
-
-  return {
-    totalScore,
-    totalWordsFound: foundCount,
-    totalValidWords,
-    missedWords: missedCount,
-    longestWord
-  };
-}
-
-function showEndGameSummary() {
-  const container = document.getElementById("end-summary");
-  if (!container) return;
-
-  const summary = buildEndGameSummary();
-  if (!summary) return;
-
-  const missedWords = gameState.puzzle.validWords
-    .filter(word => !gameState.foundWords.has(word))
-    .sort();
-
-  container.hidden = false;
-  container.innerHTML = `
-    <h2>Game Summary</h2>
-    <ul>
-      <li><strong>Total Score:</strong> ${summary.totalScore}</li>
-      <li><strong>Words Found:</strong> ${summary.totalWordsFound} of ${summary.totalValidWords}</li>
-      <li><strong>Longest Word Found:</strong> ${summary.longestWord}</li>
-      <li><strong>Words Missed:</strong> ${summary.missedWords}</li>
-    </ul>
-    ${
-      missedWords.length
-        ? `<h3>Missed Words</h3><p>${missedWords.join(", ")}</p>`
-        : `<p><strong>You found every word.</strong></p>`
-    }
-  `;
-
-  setStatus(
-    `Game over. You found ${summary.totalWordsFound} words. Longest word: ${summary.longestWord}.`,
-    true
-  );
-}
-
-function hideEndGameSummary() {
-  const container = document.getElementById("end-summary");
-  if (!container) return;
-
-  container.hidden = true;
-  container.innerHTML = "";
-}
-
-function checkForGameEnd() {
-  if (!gameState || !gameState.puzzle) return false;
-
-  const totalValidWords = gameState.puzzle.validWords.length;
-  const foundCount = gameState.foundWords.size;
-
-  if (foundCount >= totalValidWords) {
-    showEndGameSummary();
-    return true;
-  }
-
-  return false;
 }
 
 // ===============================
@@ -245,6 +172,7 @@ function smartGuess(word, validWords) {
 
   const targetMeta = metaphone(word);
   const phoneticMatches = validWords.filter(w => metaphone(w) === targetMeta);
+
   if (phoneticMatches.length > 0) return phoneticMatches[0];
 
   let best = null;
@@ -375,7 +303,6 @@ function handleGuess(word) {
 
   updateUI();
   updateFoundWords();
-  checkForGameEnd();
 }
 
 // ===============================
@@ -396,16 +323,12 @@ document.getElementById("start-btn").addEventListener("click", async () => {
     updateStatsUI();
 
     const mode = document.querySelector("input[name='mode']:checked").value;
-    const p1Name = document.getElementById("player1-name").value.trim() || "Player 1";
-    const p2Name = document.getElementById("player2-name").value.trim() || "Player 2";
+    const p1Name =
+      document.getElementById("player1-name").value.trim() || "Player 1";
+    const p2Name =
+      document.getElementById("player2-name").value.trim() || "Player 2";
 
     const puzzle = Puzzle.generatePuzzle();
-
-    if (!puzzle) {
-      setStatus("Could not generate a puzzle.", true);
-      return;
-    }
-
     puzzle.validWords = Puzzle.findValidWords(puzzle);
 
     gameState = {
@@ -421,7 +344,7 @@ document.getElementById("start-btn").addEventListener("click", async () => {
 
     document.getElementById("game").hidden = false;
 
-    hideEndGameSummary();
+    resetGameUI();
     updateUI();
     updateFoundWords();
     setStatus("Game started.", true);
@@ -523,7 +446,6 @@ function giveHint() {
 
   if (remaining.length === 0) {
     setStatus("No words left.", true);
-    showEndGameSummary();
     return;
   }
 
@@ -545,7 +467,10 @@ function handleCommandResult(result, rawText) {
       break;
 
     case "repeat":
-      setStatus(document.getElementById("status").textContent || "No status yet.", true);
+      setStatus(
+        document.getElementById("status").textContent || "No status yet.",
+        true
+      );
       break;
 
     case "read_found_words":
@@ -589,7 +514,6 @@ function readRemainingWords() {
 
   if (remaining.length === 0) {
     setStatus("You have found all words.", true);
-    showEndGameSummary();
     return;
   }
 
@@ -601,8 +525,13 @@ function readRemainingWords() {
 
   const summary = Object.keys(counts)
     .sort((a, b) => Number(a) - Number(b))
-    .map(len => `${counts[len]} ${len}-letter ${counts[len] === 1 ? "word" : "words"}`)
+    .map(
+      len => `${counts[len]} ${len}-letter ${counts[len] === 1 ? "word" : "words"}`
+    )
     .join(", ");
 
-  setStatus(`You have ${remaining.length} words remaining: ${summary}.`, true);
+  setStatus(
+    `You have ${remaining.length} words remaining: ${summary}.`,
+    true
+  );
 }
