@@ -49,7 +49,10 @@ const Speech = (() => {
 
     recognition.onresult = event => {
       const text = event.results[0][0].transcript.toLowerCase();
-      callback(text);
+
+      if (typeof callback === "function") {
+        callback(text);
+      }
     };
 
     recognition.onerror = event => {
@@ -79,9 +82,14 @@ const Speech = (() => {
     isListening = false;
   }
 
+  function getIsListening() {
+    return isListening;
+  }
+
   return {
     speak,
     startListening,
-    stopListening
+    stopListening,
+    getIsListening
   };
 })();
