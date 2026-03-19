@@ -242,10 +242,24 @@ document.addEventListener("keydown", e => {
   if (e.key === "1") {
     e.preventDefault();
 
-    const startBtn = document.getElementById("start-btn");
-    if (startBtn) {
-      startBtn.click();
+    if (gameState && !gameState.isGameOver) {
+      setStatus("Game already in progress.", true);
+      return;
     }
+
+    document.getElementById("start-btn")?.click();
+  }
+
+  // End Game with "2"
+  if (e.key === "2") {
+    e.preventDefault();
+
+    if (!gameState || gameState.isGameOver) {
+      setStatus("No active game to end.", true);
+      return;
+    }
+
+    endGame();
   }
 });
 // ===============================
