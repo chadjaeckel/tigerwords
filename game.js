@@ -234,7 +234,20 @@ document.getElementById("typed-word").addEventListener("keydown", e => {
     handleGuess(word);
   }
 });
+// ===============================
+// GLOBAL KEYBOARD SHORTCUTS
+// ===============================
+document.addEventListener("keydown", e => {
+  // Start Game with "1"
+  if (e.key === "1") {
+    e.preventDefault();
 
+    const startBtn = document.getElementById("start-btn");
+    if (startBtn) {
+      startBtn.click();
+    }
+  }
+});
 // ===============================
 // BUTTONS
 // ===============================
