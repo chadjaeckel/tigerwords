@@ -47,7 +47,7 @@ function updateFoundWords() {
 }
 
 // ===============================
-// UPDATE MISSED WORDS UI
+// UPDATE MISSED WORDS
 // ===============================
 function updateMissedWordsUI(missedWords) {
   let section = document.getElementById("missed-words");
@@ -68,7 +68,7 @@ function updateMissedWordsUI(missedWords) {
 }
 
 // ===============================
-// READ MISSED WORDS (IMPROVED)
+// READ MISSED WORDS (CHAINED)
 // ===============================
 function readMissedWordsAloud() {
   if (!gameState || !gameState.isGameOver) {
@@ -81,11 +81,9 @@ function readMissedWordsAloud() {
     .sort();
 
   if (missedWords.length === 0) {
-    setStatus("You found all words.", true);
+    Speech.speak("You found all words.");
     return;
   }
-
-  Speech.speak(`You missed ${missedWords.length} words.`);
 
   const chunkSize = 5;
   let index = 0;
@@ -96,11 +94,10 @@ function readMissedWordsAloud() {
     const chunk = missedWords.slice(index, index + chunkSize);
     index += chunkSize;
 
-    Speech.speak(chunk.join(", "));
-    setTimeout(speakNext, 2500);
+    Speech.speak(chunk.join(", "), speakNext);
   }
 
-  setTimeout(speakNext, 1500);
+  Speech.speak(`You missed ${missedWords.length} words.`, speakNext);
 }
 
 // ===============================
@@ -113,23 +110,17 @@ function updateUI() {
   gameState.puzzle.letters.forEach((ch, i) => {
     const cell = document.createElement("div");
     cell.className = "cell";
-    if (i === gameState.puzzle.centerIndex) cell.classList.add("center");
+
+    if (i === gameState.puzzle.centerIndex) {
+      cell.classList.add("center");
+    }
+
     cell.textContent = ch.toUpperCase();
     grid.appendChild(cell);
   });
 
   document.getElementById("p1-score").textContent =
     `${gameState.players[0].name}: ${gameState.players[0].score}`;
-
-  const p2 = document.getElementById("p2-score");
-
-  if (gameState.mode === "two") {
-    p2.hidden = false;
-    p2.textContent =
-      `${gameState.players[1].name}: ${gameState.players[1].score}`;
-  } else {
-    p2.hidden = true;
-  }
 }
 
 // ===============================
@@ -153,9 +144,9 @@ function handleGuess(word) {
     return;
   }
 
-  const player = gameState.players[gameState.currentPlayerIndex];
-
+  const player = gameState.players[0];
   player.score += word.length;
+
   gameState.foundWords.add(word);
 
   setStatus(`${word} accepted.`, true);
@@ -190,11 +181,12 @@ function endGame() {
     `Game ended. You found ${gameState.foundWords.size} words. ` +
     `You missed ${missed.length}. Score ${player.score}.`;
 
-  setStatus(summary, true);
   updateMissedWordsUI(missed);
 
-  // Auto-read missed words after summary
-  setTimeout(readMissedWordsAloud, 2500);
+  // Chain speech
+  Speech.speak(summary, () => {
+    readMissedWordsAloud();
+  });
 }
 
 // ===============================
@@ -209,8 +201,6 @@ document.getElementById("start-btn").addEventListener("click", async () => {
   gameState = {
     puzzle,
     players: [{ name: "Player", score: 0 }],
-    mode: "one",
-    currentPlayerIndex: 0,
     foundWords: new Set(),
     isGameOver: false
   };
@@ -234,31 +224,28 @@ document.getElementById("typed-word").addEventListener("keydown", e => {
     handleGuess(word);
   }
 });
+
 // ===============================
-// GLOBAL KEYBOARD SHORTCUTS
+// BUTTONS
+// ===============================
+document.getElementById("end-btn").addEventListener("click", endGame);
+
+const readMissedBtn = document.getElementById("read-missed-btn");
+if (readMissedBtn) {
+  readMissedBtn.addEventListener("click", readMissedWordsAloud);
+}
+
+// ===============================
+// KEYBOARD SHORTCUTS
 // ===============================
 document.addEventListener("keydown", e => {
-  // Start Game with "1"
   if (e.key === "1") {
     e.preventDefault();
-
-    if (gameState && !gameState.isGameOver) {
-      setStatus("Game already in progress.", true);
-      return;
-    }
-
     document.getElementById("start-btn")?.click();
   }
 
-  // End Game with "2"
   if (e.key === "2") {
     e.preventDefault();
-
-    if (!gameState || gameState.isGameOver) {
-      setStatus("No active game to end.", true);
-      return;
-    }
-
     endGame();
   }
 });
@@ -269,16 +256,12 @@ document.addEventListener("keydown", e => {
 let spaceHeld = false;
 
 document.addEventListener("keydown", e => {
-  if (e.code === "Space") {
-    // Prevent page scroll
+  if (e.code === "Space" && e.target.id !== "typed-word") {
     e.preventDefault();
 
-    // Avoid repeated triggers while key is held
     if (spaceHeld) return;
-
     spaceHeld = true;
 
-    // Only start if game is active
     if (!gameState || gameState.isGameOver) {
       setStatus("Start a game first.", true);
       return;
@@ -289,19 +272,9 @@ document.addEventListener("keydown", e => {
 });
 
 document.addEventListener("keyup", e => {
-  if (e.code === "Space") {
+  if (e.code === "Space" && e.target.id !== "typed-word") {
     e.preventDefault();
-
     spaceHeld = false;
     stopListening();
   }
 });
-// ===============================
-// BUTTONS
-// ===============================
-document.getElementById("end-btn").addEventListener("click", endGame);
-
-const readMissedBtn = document.getElementById("read-missed-btn");
-if (readMissedBtn) {
-  readMissedBtn.addEventListener("click", readMissedWordsAloud);
-}
