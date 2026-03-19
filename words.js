@@ -15,14 +15,17 @@ const WORDS_READY = fetch("words.txt")
   })
   .then(text => {
     const lines = text.split(/\r?\n/);
+    const uniqueWords = new Set();
 
     for (let word of lines) {
       word = word.trim().toLowerCase();
 
       if (word.length >= 4 && /^[a-z]+$/.test(word)) {
-        WORD_LIST.push(word);
+        uniqueWords.add(word);
       }
     }
+
+    WORD_LIST.push(...Array.from(uniqueWords).sort());
 
     console.log("Loaded words:", WORD_LIST.length);
   })
