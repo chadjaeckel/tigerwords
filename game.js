@@ -262,6 +262,40 @@ document.addEventListener("keydown", e => {
     endGame();
   }
 });
+
+// ===============================
+// PUSH-TO-TALK (SPACE BAR)
+// ===============================
+let spaceHeld = false;
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") {
+    // Prevent page scroll
+    e.preventDefault();
+
+    // Avoid repeated triggers while key is held
+    if (spaceHeld) return;
+
+    spaceHeld = true;
+
+    // Only start if game is active
+    if (!gameState || gameState.isGameOver) {
+      setStatus("Start a game first.", true);
+      return;
+    }
+
+    startListening();
+  }
+});
+
+document.addEventListener("keyup", e => {
+  if (e.code === "Space") {
+    e.preventDefault();
+
+    spaceHeld = false;
+    stopListening();
+  }
+});
 // ===============================
 // BUTTONS
 // ===============================
