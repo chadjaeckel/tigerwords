@@ -1,108 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#111111" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Accessible Word Grid</title>
-
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
-  <h1>Accessible Word Grid</h1>
+  <main>
+    <h1>Accessible Word Grid</h1>
 
-  <!-- ===============================
-       Game Setup
-  =============================== -->
-  <section id="setup">
-    <h2>Game Setup</h2>
+    <section aria-labelledby="setup-heading">
+      <h2 id="setup-heading">Game Setup</h2>
 
-    <label>
-      Player 1 Name:
-      <input type="text" id="player1-name" placeholder="Player 1" />
-    </label>
+      <fieldset>
+        <legend>Select game mode</legend>
+        <label><input type="radio" name="mode" value="single" checked /> Single Player</label>
+        <label><input type="radio" name="mode" value="two" /> Two Player</label>
+      </fieldset>
 
-    <label>
-      Player 2 Name:
-      <input type="text" id="player2-name" placeholder="Player 2" />
-    </label>
+      <label for="player1-name">Player 1 name</label>
+      <input id="player1-name" type="text" placeholder="Player 1 name" />
 
-    <div>
-      <label>
-        <input type="radio" name="mode" value="one" checked />
-        Single Player
-      </label>
+      <label for="player2-name">Player 2 name</label>
+      <input id="player2-name" type="text" placeholder="Player 2 name" />
 
-      <label>
-        <input type="radio" name="mode" value="two" />
-        Two Player
-      </label>
-    </div>
+      <button id="start-btn">Start Game</button>
+    </section>
 
-    <button id="start-btn">Start Game</button>
-  </section>
+    <section id="game" hidden aria-labelledby="game-heading">
+      <h2 id="game-heading">Game</h2>
 
-  <!-- ===============================
-       Game Area
-  =============================== -->
-  <section id="game" hidden>
-    <h2>Game</h2>
+      <div class="grid" id="grid" aria-label="Letter grid"></div>
 
-    <!-- Grid -->
-    <div id="grid" class="grid"></div>
+      <div id="p1-score"></div>
+      <div id="p2-score" hidden></div>
 
-    <!-- Scores -->
-    <div id="scores">
-      <p id="p1-score"></p>
-      <p id="p2-score" hidden></p>
-    </div>
+      <div id="status" role="status" aria-live="polite"></div>
 
-    <!-- Typed Input -->
-    <div id="input-area">
-      <input
-        type="text"
-        id="typed-word"
-        placeholder="Type a word and press Enter"
-        autocomplete="off"
-      />
-    </div>
+      <section id="found-words" aria-labelledby="found-words-heading">
+        <h2 id="found-words-heading">Found Words</h2>
+        <ul id="found-list"></ul>
+      </section>
 
-    <!-- Controls -->
-    <div id="controls">
-      <button id="hint-btn">Hint</button>
-      <button id="read-btn">Read Grid</button>
-      <button id="listen-btn">Start Listening</button>
-      <button id="stop-btn">Stop Listening</button>
-      <button id="end-btn">End Game</button>
-    </div>
+      <section class="controls" aria-label="Game controls">
+        <button id="listen-btn">Start Listening</button>
+        <button id="stop-btn">Stop Listening</button>
+        <button id="hint-btn">Hint</button>
+        <button id="read-btn">Read Letters</button>
+      </section>
 
-    <!-- Status -->
-    <div id="status" aria-live="polite"></div>
+      <form id="word-form">
+        <label for="typed-word">Type a word</label>
+        <input id="typed-word" type="text" placeholder="Type a word and press Enter" autocomplete="off" />
+      </form>
+    </section>
 
-    <!-- Found Words -->
-    <div id="found-words">
-      <h3>Found Words</h3>
-      <ul id="found-list"></ul>
-    </div>
+<div id="shortcuts" aria-label="Keyboard shortcuts">
+  <h2>Keyboard Shortcuts</h2>
+  <ul>
+    <li><strong>1</strong> = Start Game</li>
+    <li><strong>2</strong> = Read Letters</li>
+    <li><strong>Space</strong> = Hold to Talk</li>
+    <li><strong>Enter</strong> = Submit Typed Word</li>
+  </ul>
+</div>
 
-    <!-- Missed Words (created dynamically, but reserved space helps layout) -->
-    <div id="missed-words-container"></div>
-  </section>
 
-  <!-- ===============================
-       Statistics
-  =============================== -->
-  <section id="stats"></section>
+<div id="voice-commands" aria-label="Voice commands">
+  <h2>Voice Commands</h2>
+  <ul>
+    <li><strong>Guess [word]</strong> = Submit a word</li>
+    <li><strong>Hint</strong> = Get a hint</li>
+    <li><strong>Read grid</strong> = Hear the grid letters</li>
+    <li><strong>Repeat</strong> = Repeat the last status message</li>
+    <li><strong>Read found words</strong> = Hear the words already found</li>
+    <li><strong>Read remaining words</strong> = Hear a summary of words left</li>
+  </ul>
+  <p>Hold the <strong>Spacebar</strong> to speak.</p>
+</div>
 
-  <!-- ===============================
-       Scripts
-  =============================== -->
-  <script src="words.js"></script>
-  <script src="dictionary.js"></script>
-  <script src="puzzle.js"></script>
-  <script src="commands.js"></script>
-  <script src="storage.js"></script>
-  <script src="speech.js"></script>
-  <script src="game.js"></script>
+
+    <section id="stats" aria-labelledby="stats-heading">
+      <h2 id="stats-heading">Statistics</h2>
+    </section>
+
+    <button id="debug-btn">Toggle Debug</button>
+    <section id="debug-panel" hidden aria-labelledby="debug-heading">
+      <h2 id="debug-heading">Debug: All Valid Words</h2>
+      <ul id="debug-words"></ul>
+    </section>
+  </main>
+
+  <script src="dictionary.js" defer></script>
+  <script src="words.js" defer></script>
+  <script src="puzzle.js" defer></script>
+  <script src="speech.js" defer></script>
+  <script src="commands.js" defer></script>
+  <script src="game.js" defer></script>
+
+  <script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js")
+        .catch(error => console.error("Service worker registration failed:", error));
+    });
+  }
+</script>
+
 </body>
 </html>
