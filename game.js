@@ -94,9 +94,21 @@ function resetGameUI() {
   }
 }
 
+function clearEndGameUI() {
+  const missedSection = document.getElementById("missed-words");
+  if (missedSection) {
+    missedSection.remove();
+  }
+}
+
 function startListening() {
   if (!gameState || !gameState.puzzle) {
     setStatus("Start a game before using voice commands.", true);
+    return;
+  }
+
+  if (gameState.isGameOver) {
+    setStatus("The game has ended. Start a new game to play again.", true);
     return;
   }
 
@@ -210,6 +222,39 @@ function updateFoundWords() {
 }
 
 // ===============================
+// UPDATE MISSED WORDS
+// ===============================
+function updateMissedWordsUI(missedWords) {
+  let missedSection = document.getElementById("missed-words");
+
+  if (!missedSection) {
+    missedSection = document.createElement("div");
+    missedSection.id = "missed-words";
+
+    const gameContainer = document.getElementById("game");
+    if (gameContainer) {
+      gameContainer.appendChild(missedSection);
+    }
+  }
+
+  if (!missedWords || missedWords.length === 0) {
+    missedSection.innerHTML = `
+      <h3>Missed Words</h3>
+      <p>None. You found them all.</p>
+    `;
+    return;
+  }
+
+  const items = missedWords.map(word => `<li>${word}</li>`).join("");
+
+  missedSection.innerHTML = `
+    <h3>Missed Words</h3>
+    <p>You missed ${missedWords.length} word${missedWords.length === 1 ? "" : "s"}.</p>
+    <ul>${items}</ul>
+  `;
+}
+
+// ===============================
 // UI UPDATE
 // ===============================
 function updateUI() {
@@ -252,11 +297,71 @@ function updateUI() {
 }
 
 // ===============================
+// END GAME
+// ===============================
+function endGame() {
+  if (!gameState || !gameState.puzzle) {
+    setStatus("No game is currently running.", true);
+    return;
+  }
+
+  if (gameState.isGameOver) {
+    setStatus("The game has already ended.", true);
+    return;
+  }
+
+  Speech.stopListening();
+  gameState.isGameOver = true;
+
+  const validWords = [...gameState.puzzle.validWords].sort();
+  const foundWords = Array.from(gameState.foundWords).sort();
+  const missedWords = validWords.filter(word => !gameState.foundWords.has(word));
+
+  const foundCount = foundWords.length;
+  const missedCount = missedWords.length;
+
+  let summary = "";
+
+  if (gameState.mode === "two") {
+    const p1 = gameState.players[0];
+    const p2 = gameState.players[1];
+
+    let winnerText = "The game is a tie.";
+
+    if (p1.score > p2.score) {
+      winnerText = `${p1.name} wins.`;
+    } else if (p2.score > p1.score) {
+      winnerText = `${p2.name} wins.`;
+    }
+
+    summary =
+      `Game ended. ${p1.name} scored ${p1.score} points. ` +
+      `${p2.name} scored ${p2.score} points. ` +
+      `${winnerText} ` +
+      `${foundCount} words were found and ${missedCount} words were missed.`;
+  } else {
+    const player = gameState.players[0];
+
+    summary =
+      `Game ended. You found ${foundCount} words and missed ${missedCount}. ` +
+      `Your final score was ${player.score} points.`;
+  }
+
+  setStatus(summary, true);
+  updateMissedWordsUI(missedWords);
+}
+
+// ===============================
 // HANDLE GUESS
 // ===============================
 function handleGuess(word) {
   if (!gameState || !gameState.puzzle) {
     setStatus("No game started yet.", true);
+    return;
+  }
+
+  if (gameState.isGameOver) {
+    setStatus("The game has ended. Start a new game to play again.", true);
     return;
   }
 
@@ -303,6 +408,14 @@ function handleGuess(word) {
 
   updateUI();
   updateFoundWords();
+
+  const remaining = gameState.puzzle.validWords.filter(
+    w => !gameState.foundWords.has(w)
+  );
+
+  if (remaining.length === 0) {
+    endGame();
+  }
 }
 
 // ===============================
@@ -339,11 +452,13 @@ document.getElementById("start-btn").addEventListener("click", async () => {
       ],
       mode,
       currentPlayerIndex: 0,
-      foundWords: new Set()
+      foundWords: new Set(),
+      isGameOver: false
     };
 
     document.getElementById("game").hidden = false;
 
+    clearEndGameUI();
     resetGameUI();
     updateUI();
     updateFoundWords();
@@ -383,6 +498,11 @@ document.getElementById("hint-btn").addEventListener("click", giveHint);
 document.getElementById("read-btn").addEventListener("click", readGridAloud);
 document.getElementById("listen-btn").addEventListener("click", startListening);
 document.getElementById("stop-btn").addEventListener("click", stopListening);
+
+const endBtn = document.getElementById("end-btn");
+if (endBtn) {
+  endBtn.addEventListener("click", endGame);
+}
 
 // ===============================
 // PUSH-TO-TALK (SPACEBAR)
@@ -440,6 +560,11 @@ function giveHint() {
     return;
   }
 
+  if (gameState.isGameOver) {
+    setStatus("The game has ended. Start a new game to play again.", true);
+    return;
+  }
+
   const remaining = gameState.puzzle.validWords.filter(
     w => !gameState.foundWords.has(w)
   );
@@ -450,6 +575,29 @@ function giveHint() {
   }
 
   setStatus(`A word starts with ${remaining[0][0]}.`, true);
+}
+
+function readMissedWordsAloud() {
+  if (!gameState || !gameState.puzzle) {
+    setStatus("No game started yet.", true);
+    return;
+  }
+
+  if (!gameState.isGameOver) {
+    setStatus("End the game first to hear the missed words.", true);
+    return;
+  }
+
+  const missedWords = gameState.puzzle.validWords
+    .filter(word => !gameState.foundWords.has(word))
+    .sort();
+
+  if (missedWords.length === 0) {
+    setStatus("No missed words. You found them all.", true);
+    return;
+  }
+
+  setStatus(`Missed words: ${missedWords.join(", ")}.`, true);
 }
 
 function handleCommandResult(result, rawText) {
@@ -479,6 +627,14 @@ function handleCommandResult(result, rawText) {
 
     case "read_remaining_words":
       readRemainingWords();
+      break;
+
+    case "read_missed_words":
+      readMissedWordsAloud();
+      break;
+
+    case "end_game":
+      endGame();
       break;
 
     default:
