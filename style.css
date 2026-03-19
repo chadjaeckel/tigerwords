@@ -55,22 +55,7 @@ header {
   gap: 8px;
   margin-bottom: 1rem;
 }
-#end-summary {
-  margin-top: 10px;
-  padding: 10px;
-  background: #1a1a1a;
-  border: 1px solid #555;
-  border-radius: 8px;
-}
 
-#end-summary h2 {
-  margin-top: 0;
-}
-
-#end-summary ul {
-  margin: 0;
-  padding-left: 1.2rem;
-}
 
 #shortcuts,
 #voice-commands {
@@ -141,38 +126,4 @@ header {
   min-height: 2rem;
   font-size: 0.95rem;
   color: #ffeb3b;
-
-  #end-summary {
-  margin-top: 10px;
-  padding: 10px;
-  background: #1a1a1a;
-  border: 1px solid #555;
-  border-radius: 8px;
-}
-
-#end-summary h2,
-#end-summary h3 {
-  margin-top: 0;
-}
-
-#end-summary ul {
-  margin: 0 0 10px 0;
-  padding-left: 1.2rem;
-}
-#end-summary {
-  margin-top: 10px;
-  padding: 10px;
-  background: #1a1a1a;
-  border: 1px solid #555;
-  border-radius: 8px;
-}
-
-#end-summary h2,
-#end-summary h3 {
-  margin-top: 0;
-}
-
-#end-summary ul {
-  margin: 0 0 10px 0;
-  padding-left: 1.2rem;
 }
