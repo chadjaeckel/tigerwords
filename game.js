@@ -31,6 +31,27 @@ function clearEndGameUI() {
 }
 
 // ===============================
+// VOICE CONTROL HELPERS
+// ===============================
+function startListening() {
+  if (!gameState || gameState.isGameOver) {
+    setStatus("Start a game first.", true);
+    return;
+  }
+
+  setStatus("Listening...");
+  
+  Speech.startListening(text => {
+    // For now, treat spoken text as a guess
+    handleGuess(text);
+  });
+}
+
+function stopListening() {
+  Speech.stopListening();
+  setStatus("Stopped listening.");
+}
+// ===============================
 // UPDATE FOUND WORDS
 // ===============================
 function updateFoundWords() {
