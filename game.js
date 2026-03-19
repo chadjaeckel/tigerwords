@@ -267,22 +267,18 @@ function smartGuess(word, validWords) {
 function updateFoundWords() {
   if (!gameState) return;
 
-  const container = document.getElementById("found-words");
-  if (!container) return;
+  const list = document.getElementById("found-list");
+  if (!list) return;
 
-  container.innerHTML = "<h2>Found Words</h2>";
-
-  const ul = document.createElement("ul");
+  list.innerHTML = "";
 
   Array.from(gameState.foundWords)
     .sort()
     .forEach(word => {
       const li = document.createElement("li");
       li.textContent = word;
-      ul.appendChild(li);
+      list.appendChild(li);
     });
-
-  container.appendChild(ul);
 }
 
 // ===============================
