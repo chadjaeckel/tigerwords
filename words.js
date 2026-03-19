@@ -4,31 +4,26 @@
 // Provides WORD_LIST and WORDS_READY
 // ===============================
 
+// Global list used by puzzle.js and game.js
 const WORD_LIST = [];
 
+// Promise that resolves when the word list is fully loaded
 const WORDS_READY = fetch("words.txt")
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`Failed to load words.txt: ${response.status}`);
-    }
-    return response.text();
-  })
+  .then(response => response.text())
   .then(text => {
     const lines = text.split(/\r?\n/);
-    const uniqueWords = new Set();
 
     for (let word of lines) {
       word = word.trim().toLowerCase();
 
+      // Basic filtering — adjust as needed
       if (word.length >= 4 && /^[a-z]+$/.test(word)) {
-        uniqueWords.add(word);
+        WORD_LIST.push(word);
       }
     }
 
-    WORD_LIST.push(...Array.from(uniqueWords).sort());
-
     console.log("Loaded words:", WORD_LIST.length);
   })
-  .catch(error => {
-    console.error("Error loading words.txt:", error);
+  .catch(err => {
+    console.error("Error loading words.txt:", err);
   });
