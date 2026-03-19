@@ -52,6 +52,44 @@ function stopListening() {
   setStatus("Stopped listening.");
 }
 // ===============================
+// READ REMAINING WORD SUMMARY
+// ===============================
+function readRemainingSummary() {
+  if (!gameState || !gameState.puzzle) {
+    setStatus("No game started yet.", true);
+    return;
+  }
+
+  const remaining = gameState.puzzle.validWords.filter(
+    w => !gameState.foundWords.has(w)
+  );
+
+  if (remaining.length === 0) {
+    Speech.speak("There are no words left. You found them all.");
+    return;
+  }
+
+  // Count by word length
+  const counts = {};
+
+  remaining.forEach(word => {
+    const len = word.length;
+    counts[len] = (counts[len] || 0) + 1;
+  });
+
+  // Build spoken sentence
+  const parts = Object.keys(counts)
+    .sort((a, b) => Number(a) - Number(b))
+    .map(len => {
+      const count = counts[len];
+      return `There are ${count} ${len} letter ${count === 1 ? "word" : "words"} left`;
+    });
+
+  const sentence = parts.join(", ") + ".";
+
+  setStatus(sentence, true);
+}
+// ===============================
 // UPDATE FOUND WORDS
 // ===============================
 function updateFoundWords() {
