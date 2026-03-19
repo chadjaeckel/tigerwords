@@ -1,5 +1,6 @@
 // ===============================
-// speech.js
+// speech.js (Improved)
+// Supports speech chaining + clean listening
 // ===============================
 
 const Speech = (() => {
@@ -7,9 +8,13 @@ const Speech = (() => {
   let isListening = false;
   let isSpeaking = false;
 
-  function speak(text) {
+  // ===============================
+  // SPEAK (WITH CALLBACK SUPPORT)
+  // ===============================
+  function speak(text, onEnd) {
     if (!window.speechSynthesis) return;
 
+    // Stop any current speech before starting new
     speechSynthesis.cancel();
 
     isSpeaking = true;
@@ -21,15 +26,24 @@ const Speech = (() => {
 
     utter.onend = () => {
       isSpeaking = false;
+
+      // Run next step if provided
+      if (typeof onEnd === "function") {
+        onEnd();
+      }
     };
 
     utter.onerror = () => {
       isSpeaking = false;
+      console.warn("Speech synthesis error.");
     };
 
     speechSynthesis.speak(utter);
   }
 
+  // ===============================
+  // START LISTENING
+  // ===============================
   function startListening(callback) {
     const SpeechRec =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -67,12 +81,16 @@ const Speech = (() => {
     try {
       recognition.start();
       isListening = true;
+
       speak("Listening.");
     } catch (error) {
       console.warn("Recognition start error:", error);
     }
   }
 
+  // ===============================
+  // STOP LISTENING
+  // ===============================
   function stopListening() {
     if (recognition) {
       recognition.stop();
@@ -82,14 +100,37 @@ const Speech = (() => {
     isListening = false;
   }
 
+  // ===============================
+  // STOP SPEAKING (NEW FEATURE)
+  // ===============================
+  function stopSpeaking() {
+    if (window.speechSynthesis) {
+      speechSynthesis.cancel();
+    }
+
+    isSpeaking = false;
+  }
+
+  // ===============================
+  // STATE HELPERS
+  // ===============================
   function getIsListening() {
     return isListening;
   }
 
+  function getIsSpeaking() {
+    return isSpeaking;
+  }
+
+  // ===============================
+  // PUBLIC API
+  // ===============================
   return {
     speak,
     startListening,
     stopListening,
-    getIsListening
+    stopSpeaking,
+    getIsListening,
+    getIsSpeaking
   };
 })();
