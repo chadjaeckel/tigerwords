@@ -1,21 +1,18 @@
 // ===============================
-// speech.js (Improved)
-// Supports speech chaining + clean listening
+// speech.js — Push-to-Talk Mode
 // ===============================
 
 const Speech = (() => {
+
   let recognition = null;
   let isListening = false;
   let isSpeaking = false;
 
-  // ===============================
-  // SPEAK (WITH CALLBACK SUPPORT)
-  // ===============================
-  function speak(text, onEnd) {
+  // -----------------------------
+  // Text-to-Speech
+  // -----------------------------
+  function speak(text) {
     if (!window.speechSynthesis) return;
-
-    // Stop any current speech before starting new
-    speechSynthesis.cancel();
 
     isSpeaking = true;
 
@@ -26,25 +23,15 @@ const Speech = (() => {
 
     utter.onend = () => {
       isSpeaking = false;
-
-      // Run next step if provided
-      if (typeof onEnd === "function") {
-        onEnd();
-      }
-    };
-
-    utter.onerror = () => {
-      isSpeaking = false;
-      console.warn("Speech synthesis error.");
     };
 
     speechSynthesis.speak(utter);
   }
 
-  // ===============================
-  // START LISTENING
-  // ===============================
-  function startListening(callback) {
+  // -----------------------------
+  // Start recognition (one-shot)
+  // -----------------------------
+  function startRecognition(callback) {
     const SpeechRec =
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -53,20 +40,15 @@ const Speech = (() => {
       return;
     }
 
-    if (isListening) return;
-
     recognition = new SpeechRec();
     recognition.lang = "en-US";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-    recognition.continuous = false;
+    recognition.continuous = false;   // ⭐ one-shot mode
 
     recognition.onresult = event => {
       const text = event.results[0][0].transcript.toLowerCase();
-
-      if (typeof callback === "function") {
-        callback(text);
-      }
+      callback(text);
     };
 
     recognition.onerror = event => {
@@ -75,62 +57,52 @@ const Speech = (() => {
 
     recognition.onend = () => {
       isListening = false;
-      recognition = null;
     };
 
     try {
       recognition.start();
       isListening = true;
-
       speak("Listening.");
-    } catch (error) {
-      console.warn("Recognition start error:", error);
+    } catch (e) {
+      console.warn("Recognition start error:", e);
     }
   }
 
-  // ===============================
-  // STOP LISTENING
-  // ===============================
-  function stopListening() {
+  // -----------------------------
+  // Stop recognition
+  // -----------------------------
+  function stopRecognition() {
     if (recognition) {
+      recognition.onend = null;
       recognition.stop();
       recognition = null;
     }
-
     isListening = false;
   }
 
-  // ===============================
-  // STOP SPEAKING (NEW FEATURE)
-  // ===============================
-  function stopSpeaking() {
-    if (window.speechSynthesis) {
-      speechSynthesis.cancel();
+
+// -----------------------------
+// Push-to-Talk API
+// -----------------------------
+function pushToTalk(callback) {
+  document.addEventListener("keydown", e => {
+    if (e.code === "Space" && !isListening && !isSpeaking) {
+      startRecognition(callback);
     }
+  });
 
-    isSpeaking = false;
-  }
+  document.addEventListener("keyup", e => {
+    if (e.code === "Space") {
+      stopRecognition();
+    }
+  });
+}
 
-  // ===============================
-  // STATE HELPERS
-  // ===============================
-  function getIsListening() {
-    return isListening;
-  }
-
-  function getIsSpeaking() {
-    return isSpeaking;
-  }
-
-  // ===============================
-  // PUBLIC API
-  // ===============================
-  return {
-    speak,
-    startListening,
-    stopListening,
-    stopSpeaking,
-    getIsListening,
-    getIsSpeaking
-  };
+return {
+  speak,
+  pushToTalk,
+  stopListening: stopRecognition   // ⭐ ADD THIS
+};
 })();
+
+
