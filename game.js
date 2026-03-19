@@ -31,65 +31,6 @@ function clearEndGameUI() {
 }
 
 // ===============================
-// VOICE CONTROL HELPERS
-// ===============================
-function startListening() {
-  if (!gameState || gameState.isGameOver) {
-    setStatus("Start a game first.", true);
-    return;
-  }
-
-  setStatus("Listening...");
-  
-  Speech.startListening(text => {
-    // For now, treat spoken text as a guess
-    handleGuess(text);
-  });
-}
-
-function stopListening() {
-  Speech.stopListening();
-  setStatus("Stopped listening.");
-}
-// ===============================
-// READ REMAINING WORD SUMMARY
-// ===============================
-function readRemainingSummary() {
-  if (!gameState || !gameState.puzzle) {
-    setStatus("No game started yet.", true);
-    return;
-  }
-
-  const remaining = gameState.puzzle.validWords.filter(
-    w => !gameState.foundWords.has(w)
-  );
-
-  if (remaining.length === 0) {
-    Speech.speak("There are no words left. You found them all.");
-    return;
-  }
-
-  // Count by word length
-  const counts = {};
-
-  remaining.forEach(word => {
-    const len = word.length;
-    counts[len] = (counts[len] || 0) + 1;
-  });
-
-  // Build spoken sentence
-  const parts = Object.keys(counts)
-    .sort((a, b) => Number(a) - Number(b))
-    .map(len => {
-      const count = counts[len];
-      return `There are ${count} ${len} letter ${count === 1 ? "word" : "words"} left`;
-    });
-
-  const sentence = parts.join(", ") + ".";
-
-  setStatus(sentence, true);
-}
-// ===============================
 // UPDATE FOUND WORDS
 // ===============================
 function updateFoundWords() {
@@ -127,14 +68,9 @@ function updateMissedWordsUI(missedWords) {
 }
 
 // ===============================
-// READ MISSED WORDS (CHAINED)
+// READ MISSED WORDS
 // ===============================
 function readMissedWordsAloud() {
-  if (!gameState || !gameState.isGameOver) {
-    setStatus("End the game first.", true);
-    return;
-  }
-
   const missedWords = gameState.puzzle.validWords
     .filter(w => !gameState.foundWords.has(w))
     .sort();
@@ -157,6 +93,36 @@ function readMissedWordsAloud() {
   }
 
   Speech.speak(`You missed ${missedWords.length} words.`, speakNext);
+}
+
+// ===============================
+// READ REMAINING SUMMARY (NEW)
+// ===============================
+function readRemainingSummary() {
+  const remaining = gameState.puzzle.validWords.filter(
+    w => !gameState.foundWords.has(w)
+  );
+
+  if (remaining.length === 0) {
+    Speech.speak("There are no words left.");
+    return;
+  }
+
+  const counts = {};
+
+  remaining.forEach(word => {
+    const len = word.length;
+    counts[len] = (counts[len] || 0) + 1;
+  });
+
+  const parts = Object.keys(counts)
+    .sort((a, b) => Number(a) - Number(b))
+    .map(len => {
+      const count = counts[len];
+      return `There are ${count} ${len} letter ${count === 1 ? "word" : "words"} left`;
+    });
+
+  Speech.speak(parts.join(", ") + ".");
 }
 
 // ===============================
@@ -234,18 +200,54 @@ function endGame() {
     w => !gameState.foundWords.has(w)
   );
 
-  const player = gameState.players[0];
-
   const summary =
     `Game ended. You found ${gameState.foundWords.size} words. ` +
-    `You missed ${missed.length}. Score ${player.score}.`;
+    `You missed ${missed.length}.`;
 
   updateMissedWordsUI(missed);
 
-  // Chain speech
   Speech.speak(summary, () => {
     readMissedWordsAloud();
   });
+}
+
+// ===============================
+// VOICE CONTROL
+// ===============================
+function startListening() {
+  if (!gameState || gameState.isGameOver) {
+    setStatus("Start a game first.", true);
+    return;
+  }
+
+  setStatus("Listening...");
+
+  Speech.startListening(text => {
+    text = text.toLowerCase();
+
+    // COMMANDS
+    if (
+      text.includes("what words are left") ||
+      text.includes("words left") ||
+      text.includes("remaining words")
+    ) {
+      readRemainingSummary();
+      return;
+    }
+
+    if (text.includes("end game")) {
+      endGame();
+      return;
+    }
+
+    // Otherwise treat as guess
+    handleGuess(text);
+  });
+}
+
+function stopListening() {
+  Speech.stopListening();
+  setStatus("Stopped listening.");
 }
 
 // ===============================
@@ -289,11 +291,6 @@ document.getElementById("typed-word").addEventListener("keydown", e => {
 // ===============================
 document.getElementById("end-btn").addEventListener("click", endGame);
 
-const readMissedBtn = document.getElementById("read-missed-btn");
-if (readMissedBtn) {
-  readMissedBtn.addEventListener("click", readMissedWordsAloud);
-}
-
 // ===============================
 // KEYBOARD SHORTCUTS
 // ===============================
@@ -320,11 +317,6 @@ document.addEventListener("keydown", e => {
 
     if (spaceHeld) return;
     spaceHeld = true;
-
-    if (!gameState || gameState.isGameOver) {
-      setStatus("Start a game first.", true);
-      return;
-    }
 
     startListening();
   }
